@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 
 import 'core/app_theme.dart';
+import 'core/notification_service.dart'; // 👈 thêm dòng này
 
 import 'features/auth/auth_service.dart';
 import 'features/auth/auth_state.dart';
@@ -16,9 +17,11 @@ import 'features/restaurants/restaurant_list_screen.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Nếu bạn đã có google-services.json cho Android,
-  // dùng initializeApp() đơn giản như này là được:
+  // Khởi tạo Firebase
   await Firebase.initializeApp();
+
+  // Khởi tạo FCM + subscribe topic "reviews"
+  await NotificationService.init(); // 👈 gọi thêm dòng này
 
   runApp(const MyApp());
 }
@@ -62,7 +65,7 @@ class _Root extends StatelessWidget {
 
         final user = snapshot.data;
         if (user == null) {
-          // Chưa đăng nhập -> màn Auth có Consumer<AuthState>
+          // Chưa đăng nhập -> màn Auth
           return const AuthScreen();
         }
 
