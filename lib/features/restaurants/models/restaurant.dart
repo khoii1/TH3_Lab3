@@ -5,7 +5,7 @@ class Restaurant {
   final String imageUrl;
   final double avgRating;
   final int ratingCount;
-  final String description; // mô tả / giới thiệu
+  final String description;
 
   Restaurant({
     required this.id,
@@ -17,6 +17,9 @@ class Restaurant {
     required this.description,
   });
 
+  // 👉 Topic FCM dùng cho nhà hàng này
+  String get fcmTopic => 'restaurant_$id';
+
   factory Restaurant.fromFirestore(String id, Map<String, dynamic> data) {
     final String name = data['name'] as String? ?? '';
 
@@ -27,7 +30,6 @@ class Restaurant {
       imageUrl: data['imageUrl'] as String? ?? '',
       avgRating: (data['avgRating'] as num?)?.toDouble() ?? 0,
       ratingCount: data['ratingCount'] as int? ?? 0,
-      // Nếu Firestore chưa có trường description thì dùng câu mô tả mặc định
       description:
           data['description'] as String? ??
           'Nhà hàng $name là địa điểm lý tưởng dành cho những thực khách '

@@ -20,7 +20,7 @@ class RestaurantState extends ChangeNotifier {
 
   String? error;
 
-  // Lắng nghe danh sách nhà hàng
+  // Lắng nghe danh sách nhà hàng (stream realtime)
   void listenRestaurants() {
     loadingRestaurants = true;
     notifyListeners();
@@ -63,7 +63,7 @@ class RestaurantState extends ChangeNotifier {
               avg = sum / count;
             }
 
-            // Cập nhật lại trong mảng restaurants (UI)
+            // Cập nhật lại trong mảng restaurants (để UI list dùng)
             final index = restaurants.indexWhere(
               (resto) => resto.id == restaurantId,
             );
@@ -82,7 +82,7 @@ class RestaurantState extends ChangeNotifier {
 
             notifyListeners();
 
-            // (Tùy chọn) Cập nhật ngược lên Firestore để lưu lại
+            // Cập nhật ngược lên Firestore để lưu rating chuẩn
             await service.updateRestaurantRating(
               restaurantId: restaurantId,
               avgRating: avg,
@@ -97,7 +97,7 @@ class RestaurantState extends ChangeNotifier {
         );
   }
 
-  // Gửi review (thêm mới) – xóa / sửa bạn có thể tự viết sau
+  // Thêm review mới
   Future<void> addReview({
     required String restaurantId,
     required String text,
@@ -110,6 +110,6 @@ class RestaurantState extends ChangeNotifier {
       rating: rating,
       imageFile: imageFile,
     );
-    // Không cần tự tính ở đây, vì streamReviews sẽ bắn lại list mới → listenReviews tự tính
+    // Không cần tự tính ở đây, vì streamReviews sẽ bắn lại list mới
   }
 }

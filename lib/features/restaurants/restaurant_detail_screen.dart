@@ -3,6 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+// Thêm các import Firebase cho tính năng theo dõi + FCM
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
 import 'models/restaurant.dart';
 import 'models/review.dart';
 import 'restaurant_state.dart';
@@ -23,11 +28,77 @@ class RestaurantDetailScreen extends StatefulWidget {
 }
 
 class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
+  bool _isFollowing = false;
+
   @override
   void initState() {
     super.initState();
+
+    // Nghe danh sách review
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RestaurantState>().listenReviews(widget.restaurant.id);
+    });
+
+    // Load trạng thái theo dõi nhà hàng
+    _loadFollowState();
+  }
+
+  Future<void> _loadFollowState() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final data = userDoc.data();
+    final followed =
+        (data?['followedRestaurants'] as List<dynamic>?) ?? <dynamic>[];
+
+    if (!mounted) return;
+    setState(() {
+      _isFollowing = followed.contains(widget.restaurant.id);
+    });
+  }
+
+  Future<void> _toggleFollow() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final uid = user.uid;
+    final restaurantId = widget.restaurant.id;
+    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
+
+    await FirebaseFirestore.instance.runTransaction((tx) async {
+      final snap = await tx.get(userRef);
+      final data = snap.data() ?? <String, dynamic>{};
+      final List<dynamic> list =
+          (data['followedRestaurants'] as List<dynamic>?)?.toList() ??
+          <dynamic>[];
+
+      if (_isFollowing) {
+        // Bỏ theo dõi
+        list.remove(restaurantId);
+        await FirebaseMessaging.instance.unsubscribeFromTopic(
+          'restaurant_$restaurantId',
+        );
+      } else {
+        // Theo dõi
+        if (!list.contains(restaurantId)) {
+          list.add(restaurantId);
+        }
+        await FirebaseMessaging.instance.subscribeToTopic(
+          'restaurant_$restaurantId',
+        );
+      }
+
+      tx.set(userRef, {'followedRestaurants': list}, SetOptions(merge: true));
+    });
+
+    if (!mounted) return;
+    setState(() {
+      _isFollowing = !_isFollowing;
     });
   }
 
@@ -106,39 +177,65 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  r.name,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
+                // Hàng: thông tin + nút theo dõi
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.location_on, size: 18),
-                    const SizedBox(width: 4),
                     Expanded(
-                      child: Text(
-                        r.address,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            r.name,
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 18),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  r.address,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.star,
+                                color: Colors.amber,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                r.avgRating.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              Text(' (${r.ratingCount} đánh giá)'),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 20),
-                    const SizedBox(width: 4),
-                    Text(
-                      r.avgRating.toStringAsFixed(1),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: _toggleFollow,
+                      icon: Icon(
+                        _isFollowing ? Icons.favorite : Icons.favorite_border,
+                        color: _isFollowing ? Colors.red : Colors.grey,
                       ),
+                      label: Text(_isFollowing ? 'Đang theo dõi' : 'Theo dõi'),
                     ),
-                    Text(' (${r.ratingCount} đánh giá)'),
                   ],
                 ),
                 const SizedBox(height: 12),

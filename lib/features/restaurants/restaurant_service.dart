@@ -16,6 +16,7 @@ class RestaurantService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Stream danh sách nhà hàng (realtime)
   Stream<List<Restaurant>> streamRestaurants() {
     return _db.collection('restaurants').snapshots().map((snapshot) {
       return snapshot.docs
@@ -24,6 +25,7 @@ class RestaurantService {
     });
   }
 
+  /// Stream danh sách review của 1 nhà hàng (realtime)
   Stream<List<Review>> streamReviews(String restaurantId) {
     return _db
         .collection('restaurants')
@@ -63,6 +65,7 @@ class RestaurantService {
     return imageUrl;
   }
 
+  /// Thêm review mới cho 1 nhà hàng
   Future<void> addReview({
     required String restaurantId,
     required String text,
@@ -74,7 +77,7 @@ class RestaurantService {
       throw Exception('Chưa đăng nhập');
     }
 
-    // 👉 LUÔN dùng email làm tên hiển thị
+    // Luôn dùng email làm tên hiển thị
     final userName = user.email ?? 'Ẩn danh';
 
     String? imageUrl;
@@ -99,7 +102,7 @@ class RestaurantService {
     });
   }
 
-  // 👉 HÀM MỚI: cập nhật avgRating & ratingCount cho nhà hàng
+  /// Cập nhật avgRating & ratingCount cho nhà hàng (gọi từ RestaurantState)
   Future<void> updateRestaurantRating({
     required String restaurantId,
     required double avgRating,
